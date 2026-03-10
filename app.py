@@ -6,7 +6,9 @@ from PIL import Image
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import tensorflow as tf
+import keras as tf
+import keras
+tf.keras = keras
 import h5py
 
 st.set_page_config(page_title="Brain Tumor Segmentation", page_icon="🧠", layout="wide", initial_sidebar_state="collapsed")
@@ -218,3 +220,4 @@ with right:
 
 st.markdown('<div class="neon-divider"></div>', unsafe_allow_html=True)
 st.markdown('<p class="disclaimer">FOR RESEARCH & EDUCATIONAL PURPOSES ONLY - NOT A MEDICAL DEVICE</p>', unsafe_allow_html=True)
+
