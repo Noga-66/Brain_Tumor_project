@@ -6,6 +6,9 @@
 
 ---
 
+<img width="1919" height="860" alt="app result" src="https://github.com/user-attachments/assets/7b1ba13a-5535-4ac8-85e0-795c62987578" />
+
+
 ## 📌 Overview
 
 This project implements a **Brain Tumor Segmentation** system using a **U-Net** convolutional neural network. The model automatically detects and segments tumor regions in brain MRI scans, and is served through a clean Streamlit web interface.
