@@ -2,7 +2,7 @@
 
 
 >
-                                   ![brain_animation](https://github.com/user-attachments/assets/47a530d0-3d21-4b83-b624-d5941292e9e3)
+  ![brain_animation](https://github.com/user-attachments/assets/47a530d0-3d21-4b83-b624-d5941292e9e3)
 
 ---
 
