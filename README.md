@@ -142,14 +142,6 @@ matplotlib>=3.7.0
 
 ## ☁️ Deploy on Streamlit Cloud (Free)
 
-1. Push this repo to GitHub
-2. Go to [share.streamlit.io](https://share.streamlit.io)
-3. Sign in with GitHub → **New App**
-4. Select repo → branch: `main` → file: `app.py`
-5. Click **Deploy** ✅
-
-> Your app will be live at:
-> `https://YOUR_USERNAME-brain-tumor-segmentation-app-XXXXX.streamlit.app`
 
 ---
 
