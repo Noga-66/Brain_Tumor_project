@@ -2,7 +2,7 @@
 
 
 >
-![brain_animation](https://github.com/user-attachments/assets/47a530d0-3d21-4b83-b624-d5941292e9e3)
+                                   ![brain_animation](https://github.com/user-attachments/assets/47a530d0-3d21-4b83-b624-d5941292e9e3)
 
 ---
 
@@ -161,15 +161,8 @@ matplotlib>=3.7.0
 
 ---
 
-## ⚠️ Disclaimer
 
-This application is developed **for research and educational purposes only**.
-It is **NOT a medical device** and must **NOT** be used for clinical diagnosis,
-medical decision-making, or patient care.
-Always consult a qualified medical professional for any health concerns.
-
----
 
 <div align="center">
-Made with ❤️ using TensorFlow & Streamlit
+Made by ❤️ Nada Hossam
 </div>
