@@ -1,4 +1,4 @@
-# 🧠 Brain Tumor ptoject
+# 🧠 Brain Tumor project
 
 
 >
