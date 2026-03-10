@@ -1,10 +1,6 @@
 # 🧠 Brain Tumor ptoject
 
-<div align="center">
-
-<div align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=Orbitron&size=18&pause=1000&color=00C8FF&center=true&vCenter=true&width=500&lines=Brain+Tumor+Segmentation;U-Net+Deep+Learning+Model;Powered+by+TensorFlow+%26+Streamlit" alt="Typing SVG" />
-</div>
+> 🧠 [**View Live Brain Animation →**](https://Noga_66.github.io/brain-tumor-segmentation/brain_animation.html)
 
 **U-Net Deep Learning Model · Streamlit Web Application**
 
