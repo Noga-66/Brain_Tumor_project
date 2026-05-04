@@ -9,15 +9,15 @@
 <img width="1919" height="860" alt="app result" src="https://github.com/user-attachments/assets/7b1ba13a-5535-4ac8-85e0-795c62987578" />
 
 
-## 📌 Overview
+##  Overview
 
 This project implements a **Brain Tumor Segmentation** system using a **U-Net** convolutional neural network. The model automatically detects and segments tumor regions in brain MRI scans, and is served through a clean Streamlit web interface.
 
-> ⚠️ **For Research & Educational Purposes Only — NOT a medical device.**
+> **For Research & Educational Purposes Only — NOT a medical device.**
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 brain-tumor-segmentation/
@@ -29,7 +29,7 @@ brain-tumor-segmentation/
 
 ---
 
-## 🏗️ Model Architecture — U-Net
+##  Model Architecture — U-Net
 
 ```
 Input (256×256×3)
@@ -63,7 +63,7 @@ Output Conv2D(1, sigmoid) → Segmentation Mask (256×256×1)
 
 ---
 
-## ⚙️ Training Details
+##  Training Details
 
 | Parameter | Value |
 |-----------|-------|
@@ -78,7 +78,7 @@ Output Conv2D(1, sigmoid) → Segmentation Mask (256×256×1)
 
 ---
 
-## 🚀 Installation & Run
+##  Installation & Run
 
 ### 1. Clone the repo
 ```bash
@@ -114,7 +114,7 @@ http://localhost:8501
 
 ---
 
-## 📦 Dependencies
+##  Dependencies
 
 ```
 streamlit>=1.32.0
@@ -126,16 +126,16 @@ matplotlib>=3.7.0
 
 ---
 
-## 🖥️ How to Use
+##  How to Use
 
 1. Launch the app and wait for **● READY** status
 2. Upload a brain MRI image (JPG / PNG)
 3. Click **RUN SEGMENTATION**
 4. View results:
-   - ✅ / ⚠️ Detection status (CLEAR / POSITIVE)
-   - 📊 Tumor area percentage
-   - 🎯 Max confidence score
-   - 🖼️ 3-panel visualization: Original · Mask · Overlay
+   -  Detection status (CLEAR / POSITIVE)
+   -  Tumor area percentage
+   -  Max confidence score
+   -  3-panel visualization: Original · Mask · Overlay
 5. Click **DOWNLOAD RESULT** to save the output PNG
 
 ---
@@ -145,7 +145,7 @@ matplotlib>=3.7.0
 
 ---
 
-## 📊 Output Example
+##  Output Example
 
 | Metric | Description |
 |--------|-------------|
