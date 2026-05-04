@@ -8,215 +8,234 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import h5py
+import time
+import psutil
+from datetime import datetime
 
-st.set_page_config(page_title="Brain Tumor Segmentation", page_icon="🧠", layout="wide", initial_sidebar_state="collapsed")
+# Production optimizations
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+tf.config.optimizer.set_jit(False)
 
+# Page config
+st.set_page_config(
+    page_title=" Brain Tumor AI Detector", 
+    page_icon="🧠", 
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+# Custom CSS - التصميم الجميل
 st.markdown("""
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap');
-  .stApp, section[data-testid="stAppViewContainer"], .main { background-color: #050810 !important; background-image: linear-gradient(rgba(0,200,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,200,255,0.04) 1px, transparent 1px); background-size: 40px 40px; font-family: 'Syne', sans-serif; }
-  html, body, p, span, div, label, h1, h2, h3 { color: #e8eaf0 !important; font-family: 'Syne', sans-serif; }
-  [data-testid="stMarkdownContainer"] * { color: #e8eaf0 !important; }
-  #MainMenu, footer, header { visibility: hidden; }
-  .block-container { padding: 2rem 4rem !important; max-width: 1200px !important; }
-  .hero-title { font-size: 4rem; font-weight: 800; letter-spacing: -2px; line-height: 1; background: linear-gradient(135deg, #00c8ff 0%, #b06fff 60%, #ff4d8d 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin: 0; }
-  .hero-sub { font-family: 'Space Mono', monospace; font-size: 0.85rem; color: #4a5568 !important; letter-spacing: 3px; text-transform: uppercase; margin-top: 0.6rem; }
-  .hero-desc { color: #718096 !important; font-size: 1rem; max-width: 480px; line-height: 1.7; margin-top: 1rem; }
-  .neon-divider { height: 1px; background: linear-gradient(90deg, transparent, #00c8ff44, #b06fff44, transparent); margin: 2rem 0; }
-  [data-testid="stFileUploader"] { background: rgba(0,200,255,0.03) !important; border: 1px dashed rgba(0,200,255,0.25) !important; border-radius: 16px !important; padding: 1rem !important; }
-  [data-testid="stFileUploader"] label, [data-testid="stFileUploader"] span, [data-testid="stFileUploader"] p { color: #718096 !important; }
-  .metric-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 16px; padding: 1.4rem 1.8rem; text-align: center; }
-  .metric-label { font-family: 'Space Mono', monospace; font-size: 0.7rem; letter-spacing: 2px; text-transform: uppercase; color: #4a5568 !important; margin-bottom: 0.5rem; }
-  .metric-value { font-size: 2rem; font-weight: 800; line-height: 1; }
-  .metric-danger { color: #ff4d8d !important; } .metric-safe { color: #00e5a0 !important; } .metric-neutral { color: #00c8ff !important; }
-  .stButton > button { background: linear-gradient(135deg, #00c8ff, #b06fff) !important; color: #050810 !important; font-family: 'Space Mono', monospace !important; font-weight: 700 !important; font-size: 0.9rem !important; letter-spacing: 2px !important; text-transform: uppercase !important; border: none !important; border-radius: 12px !important; padding: 0.9rem 2rem !important; width: 100% !important; }
-  [data-testid="stDownloadButton"] > button { background: rgba(0,200,255,0.1) !important; color: #00c8ff !important; border: 1px solid rgba(0,200,255,0.3) !important; border-radius: 12px !important; font-family: 'Space Mono', monospace !important; width: 100% !important; }
-  [data-testid="stImage"] img { border-radius: 14px !important; border: 1px solid rgba(255,255,255,0.08) !important; }
-  [data-testid="stImage"] p { color: #4a5568 !important; font-family: 'Space Mono', monospace !important; font-size: 0.72rem !important; text-align: center !important; }
-  .section-label { font-family: 'Space Mono', monospace; font-size: 0.72rem; letter-spacing: 3px; text-transform: uppercase; color: #00c8ff !important; margin-bottom: 0.8rem; }
-  .disclaimer { font-family: 'Space Mono', monospace; font-size: 0.7rem; color: #2d3748 !important; text-align: center; margin-top: 3rem; letter-spacing: 1px; }
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap');
+.stApp { 
+    background: linear-gradient(135deg, #050810 0%, #0a0f20 50%, #050810 100%);
+    background-size: 400% 400%;
+    animation: gradientShift 15s ease infinite;
+}
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+.hero-title { 
+    font-size: 4.5rem; 
+    font-weight: 800; 
+    background: linear-gradient(135deg, #00c8ff 0%, #b06fff 50%, #ff4d8d 100%);
+    -webkit-background-clip: text; 
+    -webkit-text-fill-color: transparent; 
+    background-clip: text; 
+}
+.hero-sub { 
+    font-family: 'Space Mono', monospace; 
+    font-size: 0.9rem; 
+    color: #00c8ff; 
+    letter-spacing: 3px; 
+    text-transform: uppercase; 
+}
+.metric-card { 
+    background: rgba(255,255,255,0.05); 
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0,200,255,0.2); 
+    border-radius: 20px; 
+    padding: 1.5rem 2rem; 
+    text-align: center; 
+    transition: all 0.3s ease;
+}
+.metric-card:hover {
+    border-color: rgba(0,200,255,0.5);
+    box-shadow: 0 20px 40px rgba(0,200,255,0.1);
+}
+.stButton > button { 
+    background: linear-gradient(135deg, #00c8ff, #b06fff); 
+    color: #000; 
+    font-family: 'Space Mono', monospace; 
+    font-weight: 700; 
+    border-radius: 16px; 
+    padding: 1rem 2.5rem;
+}
 </style>
 """, unsafe_allow_html=True)
 
-
-@st.cache_resource(show_spinner=False)
-def load_model():
-    model_path = os.path.join(os.path.dirname(__file__), "brain_tumor_model.h5")
-
-    # Fix batch_shape compatibility
-    with h5py.File(model_path, "r+") as f:
-        model_config = f.attrs.get("model_config")
-        if model_config is not None:
-            config_str = model_config.decode("utf-8") if isinstance(model_config, bytes) else str(model_config)
-            if "batch_shape" in config_str:
-                config_str = config_str.replace('"batch_shape"', '"batch_input_shape"')
-                f.attrs["model_config"] = config_str.encode("utf-8")
-
-    # Handle Lambda layer and function_type issues
-    custom_objects = {
-        "tf": tf,
-    }
+# Title & Status
+col1, col2 = st.columns([3, 1])
+with col1:
+    st.markdown('<h1 class="hero-title">Brain Tumor<br>AI Detector</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="hero-sub">Medical AI · U-Net Segmentation · Production Ready</p>', unsafe_allow_html=True)
+with col2:
+    # Model status
+    @st.cache_resource(show_spinner=False)
+    def load_model():
+        model_path = "brain_tumor_model.h5"
+        if not os.path.exists(model_path):
+            st.error("Model file not found!")
+            st.stop()
+        
+        model = tf.keras.models.load_model(model_path, compile=False)
+        # Warmup
+        dummy = np.random.random((1, 256, 256, 3))
+        _ = model.predict(dummy, verbose=0)
+        return model
+    
     try:
-        model = tf.keras.models.load_model(model_path, compile=False, custom_objects=custom_objects)
-    except Exception:
-        # Fallback: load weights only by rebuilding the architecture
-        model = build_unet()
-        model.load_weights(model_path)
-    return model
+        model = load_model()
+        st.markdown("""
+        <div class="metric-card">
+            <div style="font-size:0.7rem;color:#00c8ff;letter-spacing:2px;margin-bottom:0.5rem">AI STATUS</div>
+            <div style="font-size:2rem;font-weight:800;color:#00ff88"> LIVE</div>
+        </div>
+        """, unsafe_allow_html=True)
+    except:
+        st.markdown("""
+        <div class="metric-card">
+            <div style="font-size:0.7rem;color:#00c8ff;letter-spacing:2px;margin-bottom:0.5rem">AI STATUS</div>
+            <div style="font-size:2rem;font-weight:800;color:#ff4d8d"> ERROR</div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.stop()
 
+st.markdown("---")
 
-def build_unet():
-    """Rebuild U-Net architecture matching the trained model."""
-    inputs = tf.keras.layers.Input((256, 256, 3))
-    s = tf.keras.layers.Lambda(lambda x: x / 255)(inputs)
-
-    c1 = tf.keras.layers.Conv2D(16, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(s)
-    c1 = tf.keras.layers.Dropout(0.1)(c1)
-    c1 = tf.keras.layers.Conv2D(16, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(c1)
-    p1 = tf.keras.layers.MaxPooling2D((2,2))(c1)
-
-    c2 = tf.keras.layers.Conv2D(32, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(p1)
-    c2 = tf.keras.layers.Dropout(0.1)(c2)
-    c2 = tf.keras.layers.Conv2D(32, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(c2)
-    p2 = tf.keras.layers.MaxPooling2D((2,2))(c2)
-
-    c3 = tf.keras.layers.Conv2D(64, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(p2)
-    c3 = tf.keras.layers.Dropout(0.2)(c3)
-    c3 = tf.keras.layers.Conv2D(64, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(c3)
-    p3 = tf.keras.layers.MaxPooling2D((2,2))(c3)
-
-    c4 = tf.keras.layers.Conv2D(128, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(p3)
-    c4 = tf.keras.layers.Dropout(0.2)(c4)
-    c4 = tf.keras.layers.Conv2D(128, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(c4)
-    p4 = tf.keras.layers.MaxPooling2D((2,2))(c4)
-
-    c5 = tf.keras.layers.Conv2D(256, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(p4)
-    c5 = tf.keras.layers.Dropout(0.3)(c5)
-    c5 = tf.keras.layers.Conv2D(256, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(c5)
-
-    u6 = tf.keras.layers.Conv2DTranspose(128, (2,2), strides=(2,2), padding="same")(c5)
-    u6 = tf.keras.layers.concatenate([u6, c4])
-    c6 = tf.keras.layers.Conv2D(128, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(u6)
-    c6 = tf.keras.layers.Dropout(0.2)(c6)
-    c6 = tf.keras.layers.Conv2D(128, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(c6)
-
-    u7 = tf.keras.layers.Conv2DTranspose(64, (2,2), strides=(2,2), padding="same")(c6)
-    u7 = tf.keras.layers.concatenate([u7, c3])
-    c7 = tf.keras.layers.Conv2D(64, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(u7)
-    c7 = tf.keras.layers.Dropout(0.2)(c7)
-    c7 = tf.keras.layers.Conv2D(64, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(c7)
-
-    u8 = tf.keras.layers.Conv2DTranspose(32, (2,2), strides=(2,2), padding="same")(c7)
-    u8 = tf.keras.layers.concatenate([u8, c2])
-    c8 = tf.keras.layers.Conv2D(32, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(u8)
-    c8 = tf.keras.layers.Dropout(0.1)(c8)
-    c8 = tf.keras.layers.Conv2D(32, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(c8)
-
-    u9 = tf.keras.layers.Conv2DTranspose(16, (2,2), strides=(2,2), padding="same")(c8)
-    u9 = tf.keras.layers.concatenate([u9, c1], axis=3)
-    c9 = tf.keras.layers.Conv2D(16, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(u9)
-    c9 = tf.keras.layers.Dropout(0.1)(c9)
-    c9 = tf.keras.layers.Conv2D(16, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(c9)
-
-    outputs = tf.keras.layers.Conv2D(1, (1,1), activation="sigmoid")(c9)
-    return tf.keras.Model(inputs=[inputs], outputs=[outputs])
-
-
-def predict(img_pil):
-    model = load_model()
-    img_resized = img_pil.resize((256, 256)).convert("RGB")
-    arr = np.expand_dims(np.array(img_resized, dtype=np.float32), axis=0)
-    pred = model.predict(arr, verbose=0)
-    return np.squeeze(pred), img_resized
-
-
-def build_result_figure(original_pil, mask):
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-    fig.patch.set_facecolor("#050810")
-    for ax, (data, title, cmap) in zip(axes, [
-        (np.array(original_pil), "Original MRI", None),
-        (mask, "Tumor Mask", "magma"),
-        (np.array(original_pil), "Overlay", None),
-    ]):
-        ax.set_facecolor("#050810")
-        ax.imshow(data, cmap=cmap)
-        if title == "Overlay":
-            ax.imshow(mask, alpha=0.55, cmap="magma")
-        ax.set_title(title, color="#718096", fontsize=11, pad=10)
-        ax.axis("off")
-    plt.tight_layout(pad=1.5)
-    buf = io.BytesIO()
-    plt.savefig(buf, format="png", dpi=110, bbox_inches="tight", facecolor=fig.get_facecolor())
-    plt.close(fig)
-    buf.seek(0)
-    return buf
-
-
-# Hero
-col_hero, col_badge = st.columns([3, 1])
-with col_hero:
-    st.markdown('<p class="hero-title">Brain<br>Tumor</p>', unsafe_allow_html=True)
-    st.markdown('<p class="hero-sub">Brain Tumor Segmentation · U-Net Model</p>', unsafe_allow_html=True)
-    st.markdown('<p class="hero-desc">Upload an MRI brain scan and the model will automatically detect and segment tumor regions using a trained U-Net architecture.</p>', unsafe_allow_html=True)
-with col_badge:
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    with st.spinner("Loading model..."):
-        try:
-            load_model()
-            st.markdown('<div class="metric-card" style="margin-top:1rem"><div class="metric-label">Model Status</div><div class="metric-value metric-safe" style="font-size:1.1rem">READY</div></div>', unsafe_allow_html=True)
-        except Exception as e:
-            st.markdown('<div class="metric-card" style="margin-top:1rem"><div class="metric-label">Model Status</div><div class="metric-value metric-danger" style="font-size:1.1rem">ERROR</div></div>', unsafe_allow_html=True)
-            st.error(f"Model error: {e}")
-
-st.markdown('<div class="neon-divider"></div>', unsafe_allow_html=True)
-
+# Main interface
 left, right = st.columns([1, 1], gap="large")
 
 with left:
-    st.markdown('<p class="section-label">// Upload Scan</p>', unsafe_allow_html=True)
-    uploaded = st.file_uploader("Drag & drop or browse", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
-    if uploaded:
-        img_pil = Image.open(uploaded).convert("RGB")
-        st.image(img_pil, use_column_width=True, caption="Uploaded MRI")
-        w, h = img_pil.size
-        st.markdown(f'<div class="metric-card" style="margin-top:1rem;text-align:left;padding:1rem 1.4rem"><span style="font-family:Space Mono,monospace;font-size:0.72rem;color:#4a5568;letter-spacing:2px">FILE: {uploaded.name}<br>SIZE: {w}x{h} px | {round(uploaded.size/1024,1)} KB</span></div>', unsafe_allow_html=True)
-        st.markdown("<br>", unsafe_allow_html=True)
-        run = st.button("RUN SEGMENTATION")
-    else:
-        st.markdown('<div style="height:300px;display:flex;align-items:center;justify-content:center;border:1px dashed rgba(255,255,255,0.06);border-radius:16px;color:#2d3748;font-family:Space Mono,monospace;font-size:0.8rem;letter-spacing:2px">NO IMAGE LOADED</div>', unsafe_allow_html=True)
-        run = False
+    st.markdown("###  Upload MRI Scan")
+    uploaded_file = st.file_uploader(
+        "Choose MRI image...", 
+        type=['png', 'jpg', 'jpeg'],
+        help="Supports PNG, JPG, JPEG up to 50MB"
+    )
+    
+    if uploaded_file is not None:
+        image = Image.open(uploaded_file)
+        st.image(image, caption="Uploaded Scan", use_column_width=True)
+        
+        col1, col2 = st.columns(2)
+        col1.metric("Width", image.width)
+        col2.metric("Height", image.height)
+        
+        if st.button(" ANALYZE TUMOR", type="primary", use_container_width=True):
+            with st.spinner(" Scanning neural tissue..."):
+                # Prediction
+                img_resized = image.resize((256, 256)).convert("RGB")
+                img_array = np.array(img_resized, dtype=np.float32) / 255.0
+                img_array = np.expand_dims(img_array, axis=0)
+                
+                pred = model.predict(img_array, verbose=0)[0]
+                
+                # Metrics
+                tumor_mask = (pred > 0.5).astype(np.uint8)
+                tumor_area = np.sum(tumor_mask) / tumor_mask.size * 100
+                confidence = np.max(pred) * 100
+                
+                st.session_state.results = {
+                    'mask': pred,
+                    'resized': img_resized,
+                    'tumor_area': tumor_area,
+                    'confidence': confidence,
+                    'tumor_detected': tumor_area > 0.1
+                }
 
 with right:
-    st.markdown('<p class="section-label">// Analysis Results</p>', unsafe_allow_html=True)
-    if uploaded and run:
-        with st.spinner("Scanning neural tissue..."):
-            try:
-                mask, img_resized = predict(img_pil)
-                binary = (mask > 0.5).astype(np.uint8)
-                tumor_pct = round(float(binary.sum()) / binary.size * 100, 2)
-                tumor_detected = binary.sum() > 0
-                result_bytes = build_result_figure(img_resized, mask).read()
-
-                c1, c2, c3 = st.columns(3)
-                with c1:
-                    cls = "metric-danger" if tumor_detected else "metric-safe"
-                    val = "POSITIVE" if tumor_detected else "CLEAR"
-                    st.markdown(f'<div class="metric-card"><div class="metric-label">Detection</div><div class="metric-value {cls}" style="font-size:1.3rem">{val}</div></div>', unsafe_allow_html=True)
-                with c2:
-                    st.markdown(f'<div class="metric-card"><div class="metric-label">Tumor Area</div><div class="metric-value metric-neutral">{tumor_pct}%</div></div>', unsafe_allow_html=True)
-                with c3:
-                    st.markdown(f'<div class="metric-card"><div class="metric-label">Confidence</div><div class="metric-value metric-neutral">{round(float(mask.max())*100,1)}%</div></div>', unsafe_allow_html=True)
-
-                st.markdown("<br>", unsafe_allow_html=True)
-                st.image(result_bytes, use_column_width=True, caption="Original | Mask | Overlay")
-                st.download_button("DOWNLOAD RESULT", data=result_bytes, file_name="brain_tumor_result.png", mime="image/png")
-
-            except Exception as e:
-                st.error(f"Error: {e}")
+    st.markdown("###  Analysis Results")
+    if 'results' in st.session_state:
+        results = st.session_state.results
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            status = " TUMOR DETECTED" if results['tumor_detected'] else " CLEAR SCAN"
+            color = "#ff4d8d" if results['tumor_detected'] else "#00ff88"
+            st.markdown(f"""
+            <div class="metric-card">
+                <div style="font-size:0.7rem;color:#aaa">DETECTION</div>
+                <div style="font-size:1.8rem;font-weight:800;color:{color}">{status}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div style="font-size:0.7rem;color:#aaa">TUMOR AREA</div>
+                <div style="font-size:1.8rem;font-weight:800;color:#00c8ff">
+                    {results['tumor_area']:.1f}%
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div style="font-size:0.7rem;color:#aaa">CONFIDENCE</div>
+                <div style="font-size:1.8rem;font-weight:800;color:#b06fff">
+                    {results['confidence']:.1f}%
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Visualization
+        st.markdown("### 🖼️ Results")
+        fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+        fig.patch.set_facecolor('#0a0f20')
+        
+        axes[0].imshow(results['resized'])
+        axes[0].set_title('Original MRI', color='white', fontsize=14)
+        axes[0].axis('off')
+        
+        axes[1].imshow(results['mask'], cmap='magma')
+        axes[1].set_title('Tumor Probability', color='white', fontsize=14)
+        axes[1].axis('off')
+        
+        axes[2].imshow(results['resized'])
+        axes[2].imshow(results['mask'], cmap='magma', alpha=0.6)
+        axes[2].set_title('Tumor Overlay', color='white', fontsize=14)
+        axes[2].axis('off')
+        
+        plt.tight_layout()
+        st.pyplot(fig)
+        
+        # Download
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight', facecolor='#0a0f20')
+        st.download_button(
+            "💾 Download Results", 
+            buf.getvalue(), 
+            f"brain_tumor_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png",
+            "image/png"
+        )
     else:
-        st.markdown('<div style="height:340px;display:flex;align-items:center;justify-content:center;border:1px dashed rgba(255,255,255,0.06);border-radius:16px;color:#2d3748;font-family:Space Mono,monospace;font-size:0.8rem;letter-spacing:2px">AWAITING INPUT</div>', unsafe_allow_html=True)
+        st.info(" Upload an MRI scan and click ANALYZE")
 
-st.markdown('<div class="neon-divider"></div>', unsafe_allow_html=True)
-st.markdown('<p class="disclaimer">FOR RESEARCH & EDUCATIONAL PURPOSES ONLY - NOT A MEDICAL DEVICE</p>', unsafe_allow_html=True)
+# Footer
+st.markdown("---")
+st.markdown("""
+<div style='text-align:center;padding:2rem;color:#666;font-size:0.8rem'>
+    <strong> Brain Tumor AI Detector</strong> | 
+    For Research & Educational Use Only | 
+    Not a Medical Device | 
+    Powered by U-Net & TensorFlow
+</div>
+""", unsafe_allow_html=True)
 
 
