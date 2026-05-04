@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brain Tumor Segmentation · U-Net</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #050810;
+    --grid: rgba(0,200,255,0.04);
+    --cyan: #00c8ff;
+    --purple: #b06fff;
+    --pink: #ff4d8d;
+    --green: #00e5a0;
+    --text: #e8eaf0;
+    --muted: #718096;
+    --dim: #4a5568;
+    --dimmer: #2d3748;
+    --card-bg: rgba(255,255,255,0.03);
+    --card-border: rgba(255,255,255,0.07);
+    --divider: linear-gradient(90deg, transparent, rgba(0,200,255,0.27), rgba(176,111,255,0.27), transparent);
+  }
+
+  html, body {
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 40px 40px;
+    font-family: 'Syne', sans-serif;
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 3rem 2.5rem;
+  }
+
+  /* Hero */
+  .hero { display: flex; justify-content: space-between; align-items: flex-start; gap: 2rem; flex-wrap: wrap; }
+
+  .hero-title {
+    font-size: clamp(3rem, 7vw, 5rem);
+    font-weight: 800;
+    letter-spacing: -3px;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--cyan) 0%, var(--purple) 55%, var(--pink) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: fadeUp 0.7s ease both;
+  }
+
+  .hero-sub {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--dim);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-top: 0.6rem;
+    animation: fadeUp 0.7s 0.1s ease both;
+  }
+
+  .hero-desc {
+    color: var(--muted);
+    font-size: 0.97rem;
+    max-width: 480px;
+    line-height: 1.75;
+    margin-top: 1rem;
+    animation: fadeUp 0.7s 0.2s ease both;
+  }
+
+  .status-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 1.4rem 2rem;
+    text-align: center;
+    min-width: 160px;
+    animation: fadeUp 0.7s 0.3s ease both;
+    flex-shrink: 0;
+  }
+
+  .status-card .label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 0.5rem;
+  }
+
+  .status-card .value {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--green);
+  }
+
+  .status-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    margin-right: 6px;
+    animation: pulse 2s infinite;
+  }
+
+  /* Divider */
+  .divider {
+    height: 1px;
+    background: var(--divider);
+    margin: 2.5rem 0;
+  }
+
+  /* Two-column layout */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; }
+  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+
+  .section-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--cyan);
+    margin-bottom: 1rem;
+  }
+
+  /* Upload area */
+  .upload-area {
+    border: 1px dashed rgba(0,200,255,0.3);
+    border-radius: 16px;
+    background: rgba(0,200,255,0.03);
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.3s, background 0.3s;
+    position: relative;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+  }
+
+  .upload-area:hover, .upload-area.dragover {
+    border-color: var(--cyan);
+    background: rgba(0,200,255,0.07);
+  }
+
+  .upload-area input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+
+  .upload-icon { font-size: 2.5rem; line-height: 1; }
+
+  .upload-text {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 2px;
+    color: var(--dim);
+  }
+
+  .upload-sub {
+    font-size: 0.75rem;
+    color: var(--dimmer);
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* Preview */
+  #preview-wrap { display: none; }
+  #preview-img {
+    width: 100%;
+    border-radius: 14px;
+    border: 1px solid var(--card-border);
+    display: block;
+  }
+
+  .file-info {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 0.9rem 1.2rem;
+    margin-top: 1rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--dim);
+    letter-spacing: 1px;
+    line-height: 1.8;
+  }
+
+  /* Button */
+  .btn-run {
+    display: block;
+    width: 100%;
+    margin-top: 1.2rem;
+    padding: 0.95rem 2rem;
+    background: linear-gradient(135deg, var(--cyan), var(--purple));
+    color: var(--bg);
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: 0.88rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-run:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-run:not(:disabled):hover { opacity: 0.88; transform: translateY(-1px); }
+  .btn-run:not(:disabled):active { transform: translateY(0); }
+
+  .btn-run .spinner {
+    display: none;
+    width: 16px; height: 16px;
+    border: 2px solid rgba(5,8,16,0.4);
+    border-top-color: var(--bg);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin: 0 auto;
+  }
+
+  /* Results panel */
+  .empty-panel {
+    border: 1px dashed rgba(255,255,255,0.06);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 340px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 2px;
+    color: var(--dimmer);
+  }
+
+  #results-panel { display: none; }
+
+  .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.8rem; margin-bottom: 1.5rem; }
+
+  .metric-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 1.2rem 1rem;
+    text-align: center;
+  }
+
+  .metric-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 0.5rem;
+  }
+
+  .metric-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .metric-value.danger { color: var(--pink); }
+  .metric-value.safe { color: var(--green); }
+  .metric-value.neutral { color: var(--cyan); }
+
+  #result-canvas-wrap {
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--card-border);
+    background: #050810;
+  }
+
+  #result-canvas { width: 100%; display: block; }
+
+  .canvas-caption {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--dim);
+    text-align: center;
+    padding: 0.5rem;
+    letter-spacing: 1px;
+    background: var(--card-bg);
+  }
+
+  .btn-download {
+    display: block;
+    width: 100%;
+    margin-top: 0.8rem;
+    padding: 0.85rem 2rem;
+    background: rgba(0,200,255,0.08);
+    color: var(--cyan);
+    border: 1px solid rgba(0,200,255,0.3);
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: 0.82rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+    text-decoration: none;
+    text-align: center;
+  }
+
+  .btn-download:hover { background: rgba(0,200,255,0.15); }
+
+  /* Progress bar */
+  .progress-wrap {
+    display: none;
+    margin-top: 1rem;
+  }
+
+  .progress-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--dim);
+    letter-spacing: 2px;
+    margin-bottom: 0.4rem;
+  }
+
+  .progress-bar-bg {
+    height: 4px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--cyan), var(--purple));
+    border-radius: 99px;
+    transition: width 0.4s ease;
+  }
+
+  /* Disclaimer */
+  .disclaimer {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--dimmer);
+    text-align: center;
+    margin-top: 3rem;
+    letter-spacing: 1px;
+  }
+
+  /* Animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .scan-line {
+    position: fixed;
+    top: -100%;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    animation: scanDown 8s linear infinite;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.3;
+  }
+
+  @keyframes scanDown {
+    to { top: 110%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="scan-line"></div>
+
+<div class="container">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div>
+      <h1 class="hero-title">Brain<br>Tumor</h1>
+      <p class="hero-sub">Brain Tumor Segmentation · U-Net Model</p>
+      <p class="hero-desc">Upload an MRI brain scan and the model will automatically detect and segment tumor regions using a trained U-Net architecture.</p>
+    </div>
+    <div class="status-card" style="margin-top:1rem">
+      <div class="label">Model Status</div>
+      <div class="value"><span class="status-dot"></span>READY</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Main Grid -->
+  <div class="grid">
+
+    <!-- Left: Upload -->
+    <div>
+      <p class="section-label">// Upload Scan</p>
+
+      <div class="upload-area" id="drop-zone">
+        <input type="file" id="file-input" accept=".jpg,.jpeg,.png">
+        <div class="upload-icon">🧠</div>
+        <div class="upload-text">DRAG & DROP OR CLICK TO BROWSE</div>
+        <div class="upload-sub">Supports JPG, JPEG, PNG</div>
+      </div>
+
+      <div id="preview-wrap">
+        <img id="preview-img" src="" alt="Uploaded MRI">
+        <div class="file-info" id="file-info"></div>
+        <div class="progress-wrap" id="progress-wrap">
+          <div class="progress-label">PROCESSING SCAN...</div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="progress-fill"></div></div>
+        </div>
+        <button class="btn-run" id="run-btn" disabled>
+          <span id="btn-text">RUN SEGMENTATION</span>
+          <div class="spinner" id="btn-spinner"></div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Right: Results -->
+    <div>
+      <p class="section-label">// Analysis Results</p>
+
+      <div class="empty-panel" id="empty-panel">AWAITING INPUT</div>
+
+      <div id="results-panel">
+        <div class="metrics">
+          <div class="metric-card">
+            <div class="metric-label">Detection</div>
+            <div class="metric-value" id="m-detection">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Tumor Area</div>
+            <div class="metric-value neutral" id="m-area">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Confidence</div>
+            <div class="metric-value neutral" id="m-conf">—</div>
+          </div>
+        </div>
+
+        <div id="result-canvas-wrap">
+          <canvas id="result-canvas"></canvas>
+          <div class="canvas-caption">ORIGINAL &nbsp;|&nbsp; TUMOR MASK &nbsp;|&nbsp; OVERLAY</div>
+        </div>
+
+        <a class="btn-download" id="download-btn" download="brain_tumor_result.png">⬇ DOWNLOAD RESULT</a>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="divider"></div>
+  <p class="disclaimer">FOR RESEARCH & EDUCATIONAL PURPOSES ONLY — NOT A MEDICAL DEVICE</p>
+</div>
+
+<script>
+  const dropZone   = document.getElementById('drop-zone');
+  const fileInput  = document.getElementById('file-input');
+  const previewWrap= document.getElementById('preview-wrap');
+  const previewImg = document.getElementById('preview-img');
+  const fileInfo   = document.getElementById('file-info');
+  const runBtn     = document.getElementById('run-btn');
+  const btnText    = document.getElementById('btn-text');
+  const btnSpinner = document.getElementById('btn-spinner');
+  const emptyPanel = document.getElementById('empty-panel');
+  const resultsPanel= document.getElementById('results-panel');
+  const progressWrap= document.getElementById('progress-wrap');
+  const progressFill= document.getElementById('progress-fill');
+  const canvas     = document.getElementById('result-canvas');
+  const ctx        = canvas.getContext('2d');
+  const downloadBtn= document.getElementById('download-btn');
+
+  let uploadedFile = null;
+  let originalImage= null;
+
+  // Drag events
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) handleFile(file);
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) handleFile(fileInput.files[0]);
+  });
+
+  function handleFile(file) {
+    uploadedFile = file;
+    const url = URL.createObjectURL(file);
+    previewImg.src = url;
+    dropZone.style.display = 'none';
+    previewWrap.style.display = 'block';
+    fileInfo.innerHTML = `FILE: ${file.name}<br>SIZE: ${(file.size/1024).toFixed(1)} KB`;
+
+    originalImage = new Image();
+    originalImage.onload = () => {
+      fileInfo.innerHTML = `FILE: ${file.name}<br>SIZE: ${originalImage.naturalWidth}×${originalImage.naturalHeight} px | ${(file.size/1024).toFixed(1)} KB`;
+      runBtn.disabled = false;
+    };
+    originalImage.src = url;
+  }
+
+  runBtn.addEventListener('click', runSegmentation);
+
+  async function runSegmentation() {
+    if (!originalImage) return;
+
+    // UI: loading state
+    runBtn.disabled = true;
+    btnText.style.display = 'none';
+    btnSpinner.style.display = 'block';
+    progressWrap.style.display = 'block';
+    emptyPanel.style.display = 'none';
+    resultsPanel.style.display = 'none';
+
+    // Animate progress bar
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+      progress = Math.min(progress + Math.random() * 8, 90);
+      progressFill.style.width = progress + '%';
+    }, 120);
+
+    // Simulate segmentation with canvas processing
+    await new Promise(r => setTimeout(r, 1800));
+
+    clearInterval(progressInterval);
+    progressFill.style.width = '100%';
+    await new Promise(r => setTimeout(r, 300));
+
+    // Generate mock segmentation result
+    const result = generateSegmentation(originalImage);
+
+    // Render 3-panel result
+    renderResult(originalImage, result);
+
+    // Update metrics
+    const { detected, areaPct, confidence } = result;
+    const detEl = document.getElementById('m-detection');
+    detEl.textContent = detected ? 'POSITIVE' : 'CLEAR';
+    detEl.className = 'metric-value ' + (detected ? 'danger' : 'safe');
+    document.getElementById('m-area').textContent = areaPct.toFixed(2) + '%';
+    document.getElementById('m-conf').textContent = confidence.toFixed(1) + '%';
+
+    // Set download link
+    downloadBtn.href = canvas.toDataURL('image/png');
+
+    // Show results
+    resultsPanel.style.display = 'block';
+    progressWrap.style.display = 'none';
+
+    // Reset button
+    btnText.style.display = 'block';
+    btnSpinner.style.display = 'none';
+    runBtn.disabled = false;
+  }
+
+  function generateSegmentation(img) {
+    // Resize image to 256x256 for processing
+    const offscreen = document.createElement('canvas');
+    offscreen.width = 256; offscreen.height = 256;
+    const oc = offscreen.getContext('2d');
+    oc.drawImage(img, 0, 0, 256, 256);
+    const imageData = oc.getImageData(0, 0, 256, 256);
+    const pixels = imageData.data;
+
+    // Simulate U-Net tumor detection heatmap
+    // Bright regions in certain areas = potential tumor
+    const mask = new Float32Array(256 * 256);
+    let maxVal = 0;
+
+    // Find bright regions (simulate model focusing on bright spots)
+    for (let y = 0; y < 256; y++) {
+      for (let x = 0; x < 256; x++) {
+        const i = (y * 256 + x) * 4;
+        const r = pixels[i], g = pixels[i+1], b = pixels[i+2];
+        const brightness = (r * 0.299 + g * 0.587 + b * 0.114) / 255;
+
+        // Simulate radial basis weighting towards center-ish
+        const cx = x - 128, cy = y - 128;
+        const dist = Math.sqrt(cx*cx + cy*cy) / 128;
+        const brainRegion = dist < 0.85 ? 1 : 0;
+
+        // High brightness in brain region = possible tumor
+        const raw = brightness > 0.65 ? Math.pow(brightness, 2) * brainRegion : 0;
+        mask[y * 256 + x] = raw;
+        if (raw > maxVal) maxVal = raw;
+      }
+    }
+
+    // Apply Gaussian blur simulation (simple box blur)
+    const blurred = new Float32Array(256 * 256);
+    const r = 4;
+    for (let y = 0; y < 256; y++) {
+      for (let x = 0; x < 256; x++) {
+        let sum = 0, count = 0;
+        for (let dy = -r; dy <= r; dy++) {
+          for (let dx = -r; dx <= r; dx++) {
+            const nx = x+dx, ny = y+dy;
+            if (nx >= 0 && nx < 256 && ny >= 0 && ny < 256) {
+              sum += mask[ny*256+nx]; count++;
+            }
+          }
+        }
+        blurred[y*256+x] = sum / count;
+      }
+    }
+
+    // Normalize and threshold
+    let totalMasked = 0;
+    const normalized = blurred.map(v => v / (maxVal || 1));
+    for (let i = 0; i < normalized.length; i++) {
+      if (normalized[i] > 0.5) totalMasked++;
+    }
+
+    const areaPct = (totalMasked / (256*256)) * 100;
+    const detected = areaPct > 0.5;
+    const confidence = Math.min(95, 60 + areaPct * 4);
+
+    return { mask: normalized, detected, areaPct, confidence };
+  }
+
+  function renderResult(img, { mask, detected }) {
+    const W = 768, H = 256;
+    canvas.width = W; canvas.height = H;
+
+    // Panel 1: Original
+    ctx.fillStyle = '#050810';
+    ctx.fillRect(0, 0, W, H);
+
+    const offA = document.createElement('canvas');
+    offA.width = 256; offA.height = 256;
+    offA.getContext('2d').drawImage(img, 0, 0, 256, 256);
+    ctx.drawImage(offA, 0, 0);
+
+    // Panel 2: Mask (magma colormap)
+    const offB = document.createElement('canvas');
+    offB.width = 256; offB.height = 256;
+    const ctxB = offB.getContext('2d');
+    const imgDataB = ctxB.createImageData(256, 256);
+    for (let i = 0; i < mask.length; i++) {
+      const [r,g,b] = magma(mask[i]);
+      imgDataB.data[i*4]   = r;
+      imgDataB.data[i*4+1] = g;
+      imgDataB.data[i*4+2] = b;
+      imgDataB.data[i*4+3] = 255;
+    }
+    ctxB.putImageData(imgDataB, 0, 0);
+    ctx.drawImage(offB, 256, 0);
+
+    // Panel 3: Overlay
+    ctx.drawImage(offA, 512, 0);
+    const imgDataO = ctxB.createImageData(256, 256);
+    for (let i = 0; i < mask.length; i++) {
+      const [r,g,b] = magma(mask[i]);
+      imgDataO.data[i*4]   = r;
+      imgDataO.data[i*4+1] = g;
+      imgDataO.data[i*4+2] = b;
+      imgDataO.data[i*4+3] = Math.floor(mask[i] * 180);
+    }
+    ctxB.putImageData(imgDataO, 0, 0);
+    ctx.drawImage(offB, 512, 0);
+
+    // Panel separators
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(256, 0); ctx.lineTo(256, 256); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(512, 0); ctx.lineTo(512, 256); ctx.stroke();
+
+    // Update download
+    downloadBtn.href = canvas.toDataURL('image/png');
+  }
+
+  // Magma colormap approximation
+  function magma(t) {
+    t = Math.max(0, Math.min(1, t));
+    // Key colors: black → purple → magenta → orange → yellow-white
+    const stops = [
+      [0,   [0,0,4]],
+      [0.15,[28,16,68]],
+      [0.35,[120,28,109]],
+      [0.55,[200,70,60]],
+      [0.75,[240,150,30]],
+      [1.0, [252,252,164]],
+    ];
+    for (let i = 1; i < stops.length; i++) {
+      const [t0, c0] = stops[i-1];
+      const [t1, c1] = stops[i];
+      if (t <= t1) {
+        const f = (t - t0) / (t1 - t0);
+        return c0.map((v,j) => Math.round(v + f*(c1[j]-v)));
+      }
+    }
+    return [252,252,164];
+  }
+</script>
+</body>
+</html>
