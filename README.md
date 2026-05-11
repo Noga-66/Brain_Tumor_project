@@ -5,8 +5,17 @@
   ![brain_animation](https://github.com/user-attachments/assets/47a530d0-3d21-4b83-b624-d5941292e9e3)
 
 ---
+🔗 **[ live Demo](https://noga-66.github.io/Brain_tumor_app/)**
+---
 
-<img width="1919" height="860" alt="app result" src="https://github.com/user-attachments/assets/7b1ba13a-5535-4ac8-85e0-795c62987578" />
+
+<img width="1847" height="856" alt="Screenshot 2026-05-11 030606" src="https://github.com/user-attachments/assets/18718799-4370-42fe-ae87-5397b99bdaf6" />
+
+---
+<img width="1841" height="857" alt="Screenshot 2026-05-11 030619" src="https://github.com/user-attachments/assets/8fb8deb7-4e88-40b5-9585-4acd1ec65be2" />
+
+---
+<img width="1842" height="860" alt="Screenshot 2026-05-11 030629" src="https://github.com/user-attachments/assets/d5da8548-bb4f-4da1-8264-7c7350f52b51" />
 
 
 ##  Overview
